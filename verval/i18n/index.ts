@@ -1,7 +1,7 @@
-import i18n, { type Resource, type LanguageDetectorAsyncModule } from "i18next";
-import { initReactI18next } from "react-i18next";
-import * as Localization from "expo-localization";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Localization from "expo-localization";
+import i18n, { type LanguageDetectorAsyncModule, type Resource } from "i18next";
+import { initReactI18next } from "react-i18next";
 
 const STORAGE_KEY = "i18n:lang";
 
@@ -10,10 +10,12 @@ const resources = {
   pt: {
     common: require("./pt/common.json"),
     auth: require("./pt/auth.json"),
+    index: require("./pt/index.json"),
   },
   en: {
     common: require("./en/common.json"),
     auth: require("./en/auth.json"),
+    index: require("./en/index.json"),
   },
 } satisfies Resource;
 
@@ -50,7 +52,7 @@ i18n
   .init({
     resources,
     fallbackLng: "pt",
-    ns: ["common", "auth"],
+    ns: ["common", "auth", "index"],
     defaultNS: "common",
     interpolation: { escapeValue: false },
     // i18next 23+ usa "v4"; pode remover esta linha também

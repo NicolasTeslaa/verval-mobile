@@ -1,0 +1,62 @@
+{
+  "currency": "USD",
+  "common": {
+    "loading": "Loading..."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Your business at a glance",
+    "actions": {
+      "showFilters": "Show Filters",
+      "hideFilters": "Hide Filters",
+      "newEntry": "New Entry"
+    },
+    "filters": {
+      "title": "Filters",
+      "presets": {
+        "today": "Today",
+        "7d": "7d",
+        "30d": "30d",
+        "mtd": "Current month"
+      }
+    },
+    "kpi": {
+      "today": "Came In Today",
+      "week": "Came In This Week",
+      "month": "Came In This Month",
+      "totalBalance": "Total Balance"
+    },
+    "mm": {
+      "incomeGrowth": "Income Growth (M/M)",
+      "expenseGrowth": "Expense Growth (M/M)",
+      "margin": "Margin (Income − Expenses)"
+    },
+    "charts": {
+      "monthlyIncome": {
+        "title": "Income vs Expenses per month"
+      },
+      "monthlyComparison": {
+        "title": "Monthly Comparison",
+        "subtitle": "Income vs Expenses",
+        "headers": {
+          "month": "Month",
+          "income": "Income",
+          "expense": "Expenses"
+        }
+      },
+      "topIncome": {
+        "title": "Top Categories — Income"
+      },
+      "topExpense": {
+        "title": "Top Categories — Expenses"
+      },
+      "top": {
+        "subtitle": "Top in period"
+      },
+      "note": {
+        "webSvg": "Rendered with pure SVG (Web compatible).",
+        "nativeSvg": "Rendered with react-native-svg."
+      }
+    }
+  }
+}

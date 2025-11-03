@@ -1,0 +1,69 @@
+{
+  "currency": "BRL",
+
+  "common": {
+    "loading": "Carregando..."
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Visão geral do seu negócio",
+
+    "actions": {
+      "showFilters": "Mostrar Filtros",
+      "hideFilters": "Esconder Filtros",
+      "newEntry": "Novo Lançamento"
+    },
+
+    "filters": {
+      "title": "Filtros",
+      "presets": {
+        "today": "Hoje",
+        "7d": "7d",
+        "30d": "30d",
+        "mtd": "Mês atual"
+      }
+    },
+
+    "kpi": {
+      "today": "Entrou Hoje",
+      "week": "Entrou na Semana",
+      "month": "Entrou no Mês",
+      "totalBalance": "Saldo Total"
+    },
+
+    "mm": {
+      "incomeGrowth": "Crescimento Entradas (M/M)",
+      "expenseGrowth": "Crescimento Saídas (M/M)",
+      "margin": "Margem (Entradas − Saídas)"
+    },
+
+    "charts": {
+      "monthlyIncome": {
+        "title": "Entradas x Saídas por mês"
+      },
+      "monthlyComparison": {
+        "title": "Comparação Mensal",
+        "subtitle": "Entradas vs Saídas",
+        "headers": {
+          "month": "Mês",
+          "income": "Entradas",
+          "expense": "Saídas"
+        }
+      },
+      "topIncome": {
+        "title": "Top Categorias — Entradas"
+      },
+      "topExpense": {
+        "title": "Top Categorias — Saídas"
+      },
+      "top": {
+        "subtitle": "Top no período"
+      },
+      "note": {
+        "webSvg": "Renderizado com SVG puro (compatível com Web).",
+        "nativeSvg": "Renderizado com react-native-svg."
+      }
+    }
+  }
+}

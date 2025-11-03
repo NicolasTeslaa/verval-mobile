@@ -39,7 +39,6 @@ export const usuarioService = {
   // dentro de usuarioService
   async login(email: string, senha: string): Promise<LoginResult> {
     const url = `${USUARIOS_API_BASE}/login`;
-
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -164,7 +163,7 @@ export const usuarioService = {
       );
     }
   },
-  
+
   async refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken?: string }> {
     const url = `${USUARIOS_API_BASE}/refresh`;
 

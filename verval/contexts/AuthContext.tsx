@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { usuarioService, type Usuario, type LoginResult } from "../services/usuarioService";
+import { setUsuarioAtual, setAuthToken } from "../services/lancamentoService";
 
 type Perfil = "admin" | "usuario";
 type MaybePerfil = Perfil | null;
@@ -43,14 +44,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ]);
 
         if (userRaw && perfilRaw && (acc || ref)) {
-          setUsuario(JSON.parse(userRaw));
+          const userObj: Usuario = JSON.parse(userRaw);
+          setUsuario(userObj);
           setPerfil(perfilRaw as Perfil);
           setAccessToken(acc ?? null);
+
+          // Propaga para a service (mesmo se token vier vazio inicialmente)
+          setUsuarioAtual(userObj?.id ?? null);
+          setAuthToken(acc ?? null);
 
           // tenta renovar token silenciosamente (opcional)
           if (!acc && ref) {
             await tryRefresh(ref);
           }
+        } else {
+          // sem sessão: garante limpar na service
+          setUsuarioAtual(null);
+          setAuthToken(null);
         }
       } finally {
         setIsLoading(false);
@@ -62,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const refreshed = await usuarioService.refresh(refreshToken);
       setAccessToken(refreshed.accessToken);
+      setAuthToken(refreshed.accessToken); // <- reflete na service
       await SecureStore.setItemAsync(SS_ACCESS, refreshed.accessToken);
       if (refreshed.refreshToken) {
         await SecureStore.setItemAsync(SS_REFRESH, refreshed.refreshToken);
@@ -78,6 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(res.usuario);
     setPerfil(res.perfil as Perfil);
     setAccessToken(res.accessToken ?? null);
+
+    // propaga para a service imediatamente
+    setUsuarioAtual(res.usuario?.id ?? null);
+    setAuthToken(res.accessToken ?? null);
 
     // persistência
     await Promise.all([
@@ -96,6 +111,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(null);
     setPerfil(null);
     setAccessToken(null);
+
+    // limpa na service
+    setUsuarioAtual(null);
+    setAuthToken(null);
+
     await Promise.all([
       AsyncStorage.multiRemove([KS_USER, KS_PERFIL]),
       SecureStore.deleteItemAsync(SS_ACCESS),
@@ -107,6 +127,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const ref = await SecureStore.getItemAsync(SS_REFRESH);
     if (ref) await tryRefresh(ref);
   };
+
+  // Segurança extra: se usuario/token mudarem por qualquer motivo, reflita na service
+  useEffect(() => {
+    setUsuarioAtual(usuario?.id ?? null);
+  }, [usuario?.id]);
+
+  useEffect(() => {
+    setAuthToken(accessToken ?? null);
+  }, [accessToken]);
 
   const value = useMemo<AuthContextType>(
     () => ({ usuario, perfil, isLoading, login, logout, accessToken, refreshSession }),

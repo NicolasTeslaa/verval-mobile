@@ -1,4 +1,7 @@
 // src/services/lancamentoService.ts
+import Constants from "expo-constants";
+
+/* ===================== Tipos ===================== */
 
 export type TipoLancamento = "Entrada" | "Saida";
 
@@ -11,7 +14,7 @@ export type Recorrencia =
 export interface Lancamento {
   id: string;
   usuarioId: string;
-  funcionarioId: string | null; // <---
+  funcionarioId: string | null;
   tipo: TipoLancamento;
   nome: string;
   valor: number;
@@ -21,44 +24,37 @@ export interface Lancamento {
   descricao?: string;
   data: string; // ISO-8601
   recorrencia?: Recorrencia;
-  // campos opcionais (se existirem no seu backend)
   contaId?: string;
   contaNome?: string;
 }
 
 export interface CreateLancamentoInput {
-  usuarioId: string;
-  funcionarioId: string | null; // <---
+  usuarioId?: string;              // << pode vir vazio; iremos preencher com o usuário atual
+  funcionarioId: string | null;
   tipo: TipoLancamento;
   nome: string;
   valor: number;
   custo?: number;
-  lucro?: number; // <<< AQUI
+  lucro?: number;                  // ignorado no payload
   categoria?: string;
   descricao?: string;
-  data: string | Date; // aceita Date aqui
+  data: string | Date;
   recorrencia?:
-  | Recorrencia
-  | {
-    // aceita versions com Date no fim
-    tipo: "MensalFixa";
-    fim: string | Date;
-  }
-  | {
-    tipo: "Parcelado";
-    parcelas: number;
-  }
-  | { tipo: "Nenhuma" }
-  | { tipo: "MensalIndefinida" };
+    | Recorrencia
+    | { tipo: "MensalFixa"; fim: string | Date }
+    | { tipo: "Parcelado"; parcelas: number }
+    | { tipo: "Nenhuma" }
+    | { tipo: "MensalIndefinida" };
 }
 
 export interface ComparacaoMes {
   mes: string; // "YYYY-MM"
   entradas: number;
-  saias?: number; // compat: alguns mocks usavam 'saias'
+  saias?: number; // compat
   saidas: number;
 }
-export interface UpdateLancamentoInput extends Partial<CreateLancamentoInput> { }
+
+export interface UpdateLancamentoInput extends Partial<CreateLancamentoInput> {}
 
 export interface Indicadores {
   entrouDia: number;
@@ -68,7 +64,6 @@ export interface Indicadores {
   totalEntradas: number;
   totalSaidas: number;
   comparacaoMeses: ComparacaoMes[];
-  // campos opcionais que seu dashboard usa se disponíveis:
   porConta?: { conta: string; entradas: number; saidas: number }[];
   topCategoriasEntradas?: { categoria: string; total: number }[];
   topCategoriasSaidas?: { categoria: string; total: number }[];
@@ -77,8 +72,8 @@ export interface Indicadores {
 export type ListFilter = { usuarioId?: string; tipo?: TipoLancamento };
 
 export interface IndicadoresFiltro {
-  inicio: string; // "YYYY-MM-DD"
-  fim: string; // "YYYY-MM-DD"
+  inicio: string; // YYYY-MM-DD
+  fim: string;    // YYYY-MM-DD
   contaId?: string;
   tipo?: TipoLancamento;
 }
@@ -90,7 +85,29 @@ const BASE = Constants.expoConfig?.extra?.API_BASE_URL ?? ""; // ex.: "http://lo
 const API_BASE = `${BASE}/api/lancamentos`;
 const CONTAS_BASE = `${BASE}/api/contas`;
 
-/* -------------------- utils -------------------- */
+/* ===================== Sessão atual (usuario + token) ===================== */
+
+let CURRENT_USER_ID: string | null = null;
+let AUTH_TOKEN: string | null = null;
+
+/** Defina assim que tiver o usuário autenticado: setUsuarioAtual(usuario?.id ?? null) */
+export function setUsuarioAtual(usuarioId: string | null) {
+  CURRENT_USER_ID = usuarioId || null;
+}
+
+/** Defina o token para enviar Authorization: Bearer ... automaticamente */
+export function setAuthToken(token: string | null) {
+  AUTH_TOKEN = token || null;
+}
+
+/** Obtém o userId (param > CURRENT_USER_ID). Lança se nenhum disponível. */
+function requireUserId(explicit?: string): string {
+  const id = explicit ?? CURRENT_USER_ID ?? "";
+  if (!id) throw new Error("[lancamentoService] Usuario não definido. Chame setUsuarioAtual(id).");
+  return id;
+}
+
+/* ===================== Utils ===================== */
 
 function toISO(v: Date | string | undefined): string | undefined {
   if (!v) return undefined;
@@ -98,24 +115,18 @@ function toISO(v: Date | string | undefined): string | undefined {
 }
 
 function serializeBody(input: any) {
-  const { recorrencia, data, lucro, ...rest } = input; // <<< remove lucro do payload
+  const { recorrencia, data, lucro, ...rest } = input; // remove 'lucro' do payload
   const payload: any = {
     ...rest,
     ...(typeof data !== "undefined" ? { data: toISO(data) } : {}),
   };
   if (recorrencia) {
     if (recorrencia.tipo === "MensalFixa") {
-      payload.recorrencia = {
-        tipo: "MensalFixa",
-        fim: toISO(recorrencia.fim)!,
-      };
+      payload.recorrencia = { tipo: "MensalFixa", fim: toISO((recorrencia as any).fim)! };
     } else if (recorrencia.tipo === "Parcelado") {
-      payload.recorrencia = {
-        tipo: "Parcelado",
-        parcelas: recorrencia.parcelas,
-      };
+      payload.recorrencia = { tipo: "Parcelado", parcelas: (recorrencia as any).parcelas };
     } else {
-      payload.recorrencia = recorrencia; // Nenhuma | MensalIndefinida
+      payload.recorrencia = recorrencia;
     }
   }
   for (const k of Object.keys(payload)) {
@@ -124,14 +135,15 @@ function serializeBody(input: any) {
   return payload;
 }
 
-export async function http<T>(
-  input: RequestInfo,
-  init?: RequestInit
-): Promise<T> {
+export async function http<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   console.log("[HTTP] ->", input, init?.method ?? "GET");
   const res = await fetch(input, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}),
+      ...(init?.headers || {}),
+    },
     ...init,
   });
 
@@ -139,9 +151,7 @@ export async function http<T>(
   const data = isJSON ? await res.json().catch(() => null) : null;
 
   if (!res.ok) {
-    const msg =
-      (data && (data.error || data.message)) ||
-      `HTTP ${res.status} ${res.statusText}`;
+    const msg = (data && (data.error || data.message)) || `HTTP ${res.status} ${res.statusText}`;
     throw new Error(msg);
   }
   return data as T;
@@ -156,63 +166,57 @@ function qs(params: Record<string, string | number | undefined>) {
   return s ? `?${s}` : "";
 }
 
-import { randomUUID } from "crypto";
-import Constants from "expo-constants";
-
-/* -------------------- service -------------------- */
+/* (Opcional) se quiser normalizar recorrencia vinda de fora */
 function normalizeRecorrencia(
   rec?: CreateLancamentoInput["recorrencia"]
 ): Recorrencia | undefined {
   if (!rec) return undefined;
-  if (rec.tipo === "MensalFixa") {
-    return { tipo: "MensalFixa", fim: toISO(rec.fim as any) };
-  }
-  if (rec.tipo === "Parcelado") {
-    return { tipo: "Parcelado", parcelas: rec.parcelas };
-  }
+  if (rec.tipo === "MensalFixa") return { tipo: "MensalFixa", fim: toISO((rec as any).fim)! };
+  if (rec.tipo === "Parcelado") return { tipo: "Parcelado", parcelas: (rec as any).parcelas };
   if (rec.tipo === "MensalIndefinida") return { tipo: "MensalIndefinida" };
   if (rec.tipo === "Nenhuma") return { tipo: "Nenhuma" };
   return undefined;
 }
 
- const toArray = (json: unknown): Lancamento[] => {
+const toArray = (json: unknown): Lancamento[] => {
   if (Array.isArray(json)) return json as Lancamento[];
   if (json && Array.isArray((json as any).items)) return (json as any).items as Lancamento[];
   if (json && Array.isArray((json as any).data))  return (json as any).data  as Lancamento[];
   return [];
 };
 
+/* ===================== Service ===================== */
+
 export const lancamentoService = {
-  /* ========= CRUD ========= */
+  /* --------- CRUD --------- */
 
   async create(
     input: Omit<Lancamento, "id" | "data" | "recorrencia"> & {
       data: Date | string;
       recorrencia?:
-      | { tipo: "Nenhuma" }
-      | { tipo: "MensalIndefinida" }
-      | { tipo: "Parcelado"; parcelas: number }
-      | { tipo: "MensalFixa"; fim: Date | string };
-      // pode ter lucro no type do form, mas será ignorado no payload
-      lucro?: number;
+        | { tipo: "Nenhuma" }
+        | { tipo: "MensalIndefinida" }
+        | { tipo: "Parcelado"; parcelas: number }
+        | { tipo: "MensalFixa"; fim: Date | string };
+      lucro?: number; // ignorado no payload
     }
   ): Promise<Lancamento> {
-    const body = serializeBody(input); // aqui já saiu sem 'lucro'
-    return http<Lancamento>(API_BASE, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    // garante usuarioId no body
+    const usuarioId = requireUserId(input.usuarioId);
+    const body = serializeBody({ ...input, usuarioId });
+    return http<Lancamento>(API_BASE, { method: "POST", body: JSON.stringify(body) });
   },
 
   async list(filter?: ListFilter): Promise<Lancamento[]> {
-    const query = qs({ usuarioId: filter?.usuarioId, tipo: filter?.tipo });
+    // se não veio usuarioId, usa o atual
+    const usuarioId = requireUserId(filter?.usuarioId);
+    const query = qs({ usuarioId, tipo: filter?.tipo });
     try {
-      // use unknown e normalize depois — evita confiar cegamente no shape
       const json = await http<unknown>(`${API_BASE}${query}`);
       return toArray(json);
     } catch (err) {
       console.error("[lancamentoService.list] erro:", err);
-      return []; // 👈 nunca propague null/undefined
+      return [];
     }
   },
 
@@ -225,13 +229,15 @@ export const lancamentoService = {
     patch: Partial<Lancamento> & {
       data?: Date | string;
       recorrencia?:
-      | { tipo: "Nenhuma" }
-      | { tipo: "MensalIndefinida" }
-      | { tipo: "Parcelado"; parcelas: number }
-      | { tipo: "MensalFixa"; fim: Date | string };
+        | { tipo: "Nenhuma" }
+        | { tipo: "MensalIndefinida" }
+        | { tipo: "Parcelado"; parcelas: number }
+        | { tipo: "MensalFixa"; fim: Date | string };
     }
   ): Promise<Lancamento> {
-    const body = serializeBody(patch);
+    // mantém/força usuarioId no patch se necessário
+    const usuarioId = requireUserId(patch.usuarioId);
+    const body = serializeBody({ ...patch, usuarioId });
     return http<Lancamento>(`${API_BASE}/${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(body),
@@ -243,13 +249,14 @@ export const lancamentoService = {
     patch: Partial<Lancamento> & {
       data?: Date | string;
       recorrencia?:
-      | { tipo: "Nenhuma" }
-      | { tipo: "MensalIndefinida" }
-      | { tipo: "Parcelado"; parcelas: number }
-      | { tipo: "MensalFixa"; fim: Date | string };
+        | { tipo: "Nenhuma" }
+        | { tipo: "MensalIndefinida" }
+        | { tipo: "Parcelado"; parcelas: number }
+        | { tipo: "MensalFixa"; fim: Date | string };
     }
   ): Promise<Lancamento> {
-    const body = serializeBody(patch);
+    const usuarioId = requireUserId(patch.usuarioId);
+    const body = serializeBody({ ...patch, usuarioId });
     return http<Lancamento>(`${API_BASE}/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -257,35 +264,29 @@ export const lancamentoService = {
   },
 
   async remove(id: string): Promise<void> {
-    await http<void>(`${API_BASE}/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    await http<void>(`${API_BASE}/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
 
-  /* ========= Indicadores =========
-   * Tenta dois formatos:
-   *  A) GET /api/lancamentos/indicadores?usuarioId=... [com filtros opcionais]
-   *  B) GET /api/lancamentos/indicadores/:usuarioId   [com filtros opcionais]
+  /* --------- Indicadores --------- 
+   * A) GET /api/lancamentos/indicadores?usuarioId=...
+   * B) GET /api/lancamentos/indicadores/:usuarioId
    */
 
-  async listarIndicadores(usuarioId: string): Promise<Indicadores> {
-    console.log("entrou no listar indicadores");
+  async listarIndicadores(usuarioIdParam?: string): Promise<Indicadores> {
+    const usuarioId = requireUserId(usuarioIdParam);
     const q = qs({ usuarioId });
     try {
-      // Formato A
       return await http<Indicadores>(`${API_BASE}/indicadores${q}`);
-    } catch (e: any) {
-      // Fallback: Formato B
-      return http<Indicadores>(
-        `${API_BASE}/indicadores/${encodeURIComponent(usuarioId)}`
-      );
+    } catch {
+      return http<Indicadores>(`${API_BASE}/indicadores/${encodeURIComponent(usuarioId)}`);
     }
   },
 
   async listarIndicadoresFiltrado(
-    usuarioId: string,
+    usuarioIdParam: string | undefined,
     f: IndicadoresFiltro
   ): Promise<Indicadores> {
+    const usuarioId = requireUserId(usuarioIdParam);
     const q = qs({
       usuarioId,
       inicio: f.inicio,
@@ -294,35 +295,27 @@ export const lancamentoService = {
       tipo: f.tipo,
     });
     try {
-      // Formato A
       return await http<Indicadores>(`${API_BASE}/indicadores${q}`);
-    } catch (e: any) {
-      // Fallback: Formato B
+    } catch {
       const base = `${API_BASE}/indicadores/${encodeURIComponent(usuarioId)}`;
       return http<Indicadores>(
-        `${base}${qs({
-          inicio: f.inicio,
-          fim: f.fim,
-          contaId: f.contaId,
-          tipo: f.tipo,
-        })}`
+        `${base}${qs({ inicio: f.inicio, fim: f.fim, contaId: f.contaId, tipo: f.tipo })}`
       );
     }
   },
 
-  /* ========= Contas (opcional no seu mock) =========
-   * Espera:
-   *  GET /api/contas?usuarioId=...
-   * ou  GET /api/lancamentos/contas?usuarioId=...
+  /* --------- Contas ---------
+   * GET /api/contas?usuarioId=...
+   * fallback: GET /api/lancamentos/contas?usuarioId=...
    */
 
-  async listarContas(usuarioId: string): Promise<Conta[]> {
+  async listarContas(usuarioIdParam?: string): Promise<Conta[]> {
+    const usuarioId = requireUserId(usuarioIdParam);
     const q = qs({ usuarioId });
     try {
-      // preferencial se você tiver uma rota dedicada a contas
-      return await http<Conta[]>(`${CONTAS_BASE}/${q}`);
+      // corrigido: sem barra antes do querystring
+      return await http<Conta[]>(`${CONTAS_BASE}${q}`);
     } catch {
-      // fallback: se decidiu expor via /lancamentos/contas
       return http<Conta[]>(`${API_BASE}/contas${q}`);
     }
   },
