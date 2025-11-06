@@ -1,0 +1,52 @@
+{
+  "kpi": {
+    "in": "Entradas",
+    "out": "Saídas",
+    "balance": "Saldo"
+  },
+  "empty": "Nenhum lançamento encontrado.",
+  "emptyHint": "Toque em + para adicionar seu primeiro.",
+  "profit": "Lucro",
+  "entry": "Entrada",
+  "exit": "Saída",
+
+  "actions": {
+    "new": "Novo lançamento",
+    "edit": "Editar lançamento",
+    "saveChanges": "Salvar"
+  },
+
+  "form": {
+    "name": "Nome",
+    "amount": "Valor",
+    "description": "Descrição"
+  },
+
+  "table": {
+    "cost": "Custo",
+    "category": "Categoria"
+  },
+
+  "placeholders": {
+    "description": "Descrição",
+    "exampleCategory": "ex.: Vendas",
+    "optional": "opcional"
+  },
+
+  "common": {
+    "cancel": "Cancelar"
+  },
+
+  "deleteTitle": "Excluir lançamento",
+  "deleteMessage": "Deseja excluir \"{{nome}}\"?",
+  "deleteError": "Falha ao excluir",
+  "loadError": "Falha ao carregar lançamentos.",
+  "saveError": "Falha ao salvar",
+
+  "errors": {
+    "unauthenticated": "Usuário não autenticado"
+  },
+
+  "error": "Erro",
+  "confirmDelete": "Excluir"
+}

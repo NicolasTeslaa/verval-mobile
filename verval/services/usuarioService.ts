@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { http } from "./lancamentoService";
 
 // Base global da API de usuários
-const BASE = Constants.expoConfig?.extra?.API_BASE_URL ?? ""; // ex.: "http://localhost:3333"
+const BASE = Constants.expoConfig?.extra?.API_BASE_URL ?? "https://chatfinanceiro.com/grana"; // ex.: "http://localhost:3333"
 const USUARIOS_API_BASE = `${BASE}/api/usuarios`;
 
 type LoginResponse = {

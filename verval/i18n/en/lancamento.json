@@ -1,0 +1,52 @@
+{
+  "kpi": {
+    "in": "Income",
+    "out": "Expenses",
+    "balance": "Balance"
+  },
+  "empty": "No transactions found.",
+  "emptyHint": "Tap + to add your first one.",
+  "profit": "Profit",
+  "entry": "Income",
+  "exit": "Expense",
+
+  "actions": {
+    "new": "New transaction",
+    "edit": "Edit transaction",
+    "saveChanges": "Save"
+  },
+
+  "form": {
+    "name": "Name",
+    "amount": "Amount",
+    "description": "Description"
+  },
+
+  "table": {
+    "cost": "Cost",
+    "category": "Category"
+  },
+
+  "placeholders": {
+    "description": "Description",
+    "exampleCategory": "e.g., Sales",
+    "optional": "optional"
+  },
+
+  "common": {
+    "cancel": "Cancel"
+  },
+
+  "deleteTitle": "Delete transaction",
+  "deleteMessage": "Do you want to delete \"{{nome}}\"?",
+  "deleteError": "Failed to delete",
+  "loadError": "Failed to load transactions.",
+  "saveError": "Failed to save",
+
+  "errors": {
+    "unauthenticated": "User not authenticated"
+  },
+
+  "error": "Error",
+  "confirmDelete": "Delete"
+}

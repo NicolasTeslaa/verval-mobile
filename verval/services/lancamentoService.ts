@@ -80,8 +80,12 @@ export interface IndicadoresFiltro {
 
 export type Conta = { id: string; nome: string };
 
-// src/services/lancamentoService.ts
-const BASE = Constants.expoConfig?.extra?.API_BASE_URL ?? ""; // ex.: "http://localhost:3333"
+/* ===================== Config/API ===================== */
+
+const BASE =
+  Constants.expoConfig?.extra?.API_BASE_URL ??
+  "https://chatfinanceiro.com/grana";
+
 const API_BASE = `${BASE}/api/lancamentos`;
 const CONTAS_BASE = `${BASE}/api/contas`;
 

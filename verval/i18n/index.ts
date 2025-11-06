@@ -5,26 +5,25 @@ import { initReactI18next } from "react-i18next";
 
 const STORAGE_KEY = "i18n:lang";
 
-// tipa o resources de forma explícita
 const resources = {
   pt: {
     common: require("./pt/common.json"),
     auth: require("./pt/auth.json"),
     index: require("./pt/index.json"),
+    lanc: require("./pt/lancamento.json"),
   },
   en: {
     common: require("./en/common.json"),
     auth: require("./en/auth.json"),
     index: require("./en/index.json"),
+    lanc: require("./en/lancamento.json"),
   },
 } satisfies Resource;
 
-// detector assíncrono tipado
 const languageDetector: LanguageDetectorAsyncModule = {
   type: "languageDetector",
   async: true,
   detect: (cb) => {
-    // não retornar Promise aqui!
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
@@ -45,17 +44,15 @@ const languageDetector: LanguageDetectorAsyncModule = {
   },
 };
 
-
 i18n
-  .use(languageDetector) // se quiser “desestressar” a tipagem: .use(languageDetector as any)
+  .use(languageDetector)
   .use(initReactI18next)
   .init({
     resources,
     fallbackLng: "pt",
-    ns: ["common", "auth", "index"],
+    ns: ["common", "auth", "index", "lanc"],
     defaultNS: "common",
     interpolation: { escapeValue: false },
-    // i18next 23+ usa "v4"; pode remover esta linha também
     compatibilityJSON: "v4",
   });
 
