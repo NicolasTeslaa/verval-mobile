@@ -3,7 +3,6 @@ import { currency, toneByValue } from '@/utils/format';
 import { MotiView } from 'moti';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Sparkline } from './Sparkline';
 
 export function KpiCard({
   title, value, locale, currencyCode, delta, trend,
@@ -24,7 +23,6 @@ export function KpiCard({
         <Text style={s.cardTitle}>{title}</Text>
       </View>
       <Text style={[s.kpiValue, { color: tone.text }]}>{currency(value, locale, currencyCode)}</Text>
-      {!!trend?.length && <View style={{ marginTop: 8 }}><Sparkline values={trend} stroke={tone.icon} /></View>}
     </MotiView>
   );
 }

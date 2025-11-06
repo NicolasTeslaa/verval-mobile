@@ -1,12 +1,26 @@
+// components/lancamentos/EditLancamentoModal.tsx
 import { Text } from '@/components/Themed';
+import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { lancamentoService, type Lancamento, type TipoLancamento } from '@/services/lancamentoService';
 import { FontAwesome } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Alert,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LabeledInput } from './LabeledInput';
-import { useLocale } from './utils';
 
 type Props = {
   visible: boolean;
@@ -16,9 +30,14 @@ type Props = {
 };
 
 export function EditLancamentoModal({ visible, initial, onClose, onSaved }: Props) {
-  const { t } = useTranslation('lanc'); // << namespace único
+  const { t } = useTranslation('lanc');
   const { usuario } = useAuth();
-  const { fmtMoney } = useLocale();
+
+  const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+  const C = Colors[scheme ?? 'light'];
+  const s = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
   const [tipo, setTipo] = useState<TipoLancamento>(initial?.tipo || 'Entrada');
   const [nome, setNome] = useState(initial?.nome || '');
@@ -26,6 +45,9 @@ export function EditLancamentoModal({ visible, initial, onClose, onSaved }: Prop
   const [custo, setCusto] = useState(String(initial?.custo ?? ''));
   const [categoria, setCategoria] = useState(initial?.categoria || '');
   const [descricao, setDescricao] = useState(initial?.descricao || '');
+
+  // mede o header para calibrar o offset
+  const [headerH, setHeaderH] = useState(0);
 
   useEffect(() => {
     if (!visible) return;
@@ -60,102 +82,221 @@ export function EditLancamentoModal({ visible, initial, onClose, onSaved }: Prop
     }
   }, [usuario?.id, tipo, nome, valor, custo, categoria, descricao, initial, onSaved, t]);
 
+  const accId = 'numeric-done-accessory';
+
+  // 👇 AQUI é o pulo do gato: quanto MAIOR esse offset, MENOS o conteúdo sobe.
+  // somo o topo seguro + a altura do header + uma gordura pequena
+  const keyboardOffset =
+    (Platform.OS === 'ios' ? insets.top : 0) + headerH + -200;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {initial ? t('actions.edit') : t('actions.new')}
-            </Text>
-            <Pressable onPress={onClose} style={styles.iconBtn}>
-              <FontAwesome name="close" size={20} />
-            </Pressable>
-          </View>
-
-          {/* Tipo */}
-          <View style={styles.fieldRow}>
-            <Pressable style={[styles.chip, tipo === 'Entrada' && styles.chipActive]} onPress={() => setTipo('Entrada')}>
-              <Text style={[styles.chipText, tipo === 'Entrada' && styles.chipTextActive]}>{t('entry')}</Text>
-            </Pressable>
-            <Pressable style={[styles.chip, tipo === 'Saida' && styles.chipActive]} onPress={() => setTipo('Saida')}>
-              <Text style={[styles.chipText, tipo === 'Saida' && styles.chipTextActive]}>{t('exit')}</Text>
-            </Pressable>
-          </View>
-
-          <LabeledInput
-            label={t('form.name')}
-            value={nome}
-            onChangeText={setNome}
-            placeholder={t('placeholders.description')}
-          />
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <LabeledInput
-                label={t('form.amount')}
-                value={valor}
-                onChangeText={setValor}
-                keyboardType="decimal-pad"
-                placeholder={fmtMoney(0)}
-              />
+      {/* Tocar fora fecha o teclado */}
+      <View
+        style={s.modalBackdrop}
+        onStartShouldSetResponder={() => true}
+        onResponderStart={() => Keyboard.dismiss()}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={keyboardOffset}
+          style={{ width: '100%' }}
+        >
+          <View style={s.modalCard}>
+            <View
+              style={s.modalHeader}
+              onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
+            >
+              <Text style={s.modalTitle}>
+                {initial ? t('actions.edit') : t('actions.new')}
+              </Text>
+              <Pressable onPress={onClose} style={s.iconBtn}>
+                <FontAwesome name="close" size={20} color={isDark ? '#fff' : C.textStrong} />
+              </Pressable>
             </View>
-            {tipo === 'Entrada' ? (
-              <View style={{ flex: 1 }}>
-                <LabeledInput
-                  label={t('table.cost')}
-                  value={custo}
-                  onChangeText={setCusto}
-                  keyboardType="decimal-pad"
-                  placeholder={fmtMoney(0)}
-                />
+
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              automaticallyAdjustKeyboardInsets={false}  // evita "dobrar" ajuste
+              contentContainerStyle={{ paddingBottom: insets.bottom + 6 }} // pouco respiro embaixo
+            >
+              {/* Tipo */}
+              <View style={s.fieldRow}>
+                <Pressable
+                  style={[s.chip, tipo === 'Entrada' && s.chipActive]}
+                  onPress={() => setTipo('Entrada')}
+                >
+                  <Text style={[s.chipText, tipo === 'Entrada' && s.chipTextActive]}>
+                    {t('entry')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[s.chip, tipo === 'Saida' && s.chipActive]}
+                  onPress={() => setTipo('Saida')}
+                >
+                  <Text style={[s.chipText, tipo === 'Saida' && s.chipTextActive]}>
+                    {t('exit')}
+                  </Text>
+                </Pressable>
               </View>
-            ) : null}
-          </View>
 
-          <LabeledInput
-            label={t('table.category')}
-            value={categoria}
-            onChangeText={setCategoria}
-            placeholder={t('placeholders.exampleCategory')}
-          />
-          <LabeledInput
-            label={t('form.description')}
-            value={descricao}
-            onChangeText={setDescricao}
-            placeholder={t('placeholders.optional')}
-            multiline
-          />
+              <LabeledInput
+                label={t('form.name')}
+                value={nome}
+                onChangeText={setNome}
+                placeholder={t('placeholders.description')}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
 
-          <View style={styles.actionsRow}>
-            <Pressable onPress={onClose} style={[styles.btn, styles.btnGhost]}>
-              <Text style={[styles.btnText, styles.btnGhostText]}>{t('common.cancel')}</Text>
-            </Pressable>
-            <Pressable onPress={salvar} style={[styles.btn, styles.btnPrimary]}>
-              <Text style={[styles.btnText, { color: '#fff' }]}>{t('actions.saveChanges')}</Text>
-            </Pressable>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <LabeledInput
+                    label={t('form.amount')}
+                    value={valor}
+                    onChangeText={setValor}
+                    inputMode="decimal"
+                    keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
+                    placeholder={'0,00'}
+                    returnKeyType="done"
+                    blurOnSubmit
+                    onSubmitEditing={() => Keyboard.dismiss()}
+                    {...(Platform.OS === 'ios' ? { inputAccessoryViewID: accId } : {})}
+                  />
+                </View>
+
+                {tipo === 'Entrada' ? (
+                  <View style={{ flex: 1 }}>
+                    <LabeledInput
+                      label={t('table.cost')}
+                      value={custo}
+                      onChangeText={setCusto}
+                      inputMode="decimal"
+                      keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
+                      placeholder={'0,00'}
+                      returnKeyType="done"
+                      blurOnSubmit
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                      {...(Platform.OS === 'ios' ? { inputAccessoryViewID: accId } : {})}
+                    />
+                  </View>
+                ) : null}
+              </View>
+
+              <LabeledInput
+                label={t('table.category')}
+                value={categoria}
+                onChangeText={setCategoria}
+                placeholder={t('placeholders.exampleCategory')}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+
+              <LabeledInput
+                label={t('form.description')}
+                value={descricao}
+                onChangeText={setDescricao}
+                placeholder={t('placeholders.optional')}
+                multiline
+              />
+
+              <View style={s.actionsRow}>
+                <Pressable onPress={onClose} style={[s.btn, s.btnGhost]}>
+                  <Text style={[s.btnText, s.btnGhostText]}>{t('common.cancel')}</Text>
+                </Pressable>
+                <Pressable onPress={salvar} style={[s.btn, s.btnPrimary]}>
+                  <Text style={[s.btnText, { color: C.primaryText }]}>{t('actions.saveChanges')}</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </View>
+
+      {/* iOS: barra “Concluir” para teclado numérico */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={accId}>
+          <View style={[s.accBar, { borderColor: C.border, backgroundColor: C.card }]}>
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={() => Keyboard.dismiss()} style={s.accBtn}>
+              <Text style={[s.accBtnText]}>Concluir</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', width: '100%', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  modalTitle: { fontSize: 18, fontWeight: '700' },
-  fieldRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 9999, backgroundColor: '#f3f4f6' },
-  chipActive: { backgroundColor: '#111827' },
-  chipText: { color: '#111827', fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
-  actionsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  btn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  btnGhost: { backgroundColor: '#f3f4f6' },
-  btnGhostText: { color: '#111827' },
-  btnPrimary: { backgroundColor: '#111827' },
-  btnText: { fontWeight: '700' },
-  iconBtn: { paddingHorizontal: 8, paddingVertical: 6 },
-});
+function makeStyles(C: typeof Colors.light, isDark: boolean) {
+  const textOnBg = isDark ? '#fff' : C.textStrong;
+
+  return StyleSheet.create({
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+    },
+    modalCard: {
+      backgroundColor: C.card,
+      width: '100%',
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      padding: 16,
+      maxHeight: '92%',
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: textOnBg },
+    fieldRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 9999,
+      backgroundColor: C.chipBg,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    chipActive: { backgroundColor: C.primary, borderColor: C.primary },
+    chipText: { color: textOnBg, fontWeight: '600' },
+    chipTextActive: { color: C.primaryText },
+
+    actionsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    btn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    btnGhost: { backgroundColor: C.chipBg, borderWidth: 1, borderColor: C.border },
+    btnGhostText: { color: textOnBg },
+    btnPrimary: { backgroundColor: C.primary, borderColor: C.primary },
+    btnText: { fontWeight: '700', color: textOnBg },
+    iconBtn: { paddingHorizontal: 8, paddingVertical: 6 },
+
+    // iOS accessory
+    accBar: {
+      borderTopWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    accBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      backgroundColor: C.primary,
+    },
+    accBtnText: {
+      color: C.primaryText,
+      fontWeight: '700',
+    },
+  });
+}

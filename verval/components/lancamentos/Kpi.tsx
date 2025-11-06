@@ -1,7 +1,7 @@
 import { Text } from '@/components/Themed';
 import { FontAwesome } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 import type { Tone } from './utils';
 
 type Size = 'sm' | 'md' | 'lg';
@@ -11,10 +11,12 @@ type Props = {
   value: string | number;
   icon: React.ComponentProps<typeof FontAwesome>['name'];
   tone: Tone;
-  size?: Size;                    // sm | md | lg
-  containerStyle?: ViewStyle;     // opcional
-  titleStyle?: TextStyle;         // opcional: override fino
-  valueStyle?: TextStyle;         // opcional: override fino
+  size?: Size;
+  containerStyle?: ViewStyle;
+  titleStyle?: TextStyle;
+  valueStyle?: TextStyle;
+  onPress?: () => void;   // <<< novo
+  active?: boolean;       // <<< novo
 };
 
 const TITLE_SIZES: Record<Size, number> = { sm: 11, md: 12, lg: 14 };
@@ -29,12 +31,18 @@ export function Kpi({
   containerStyle,
   titleStyle,
   valueStyle,
+  onPress,
+  active = false,
 }: Props) {
   return (
-    <View
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      android_ripple={{ color: '#00000018', borderless: false }}
       style={[
         styles.kpi,
-        { backgroundColor: tone.bg, borderColor: tone.border },
+        { backgroundColor: tone.bg, borderColor: active ? tone.text : tone.border, borderWidth: active ? 2 : 1 },
+        active && styles.kpiActive,
         containerStyle,
       ]}
     >
@@ -66,7 +74,7 @@ export function Kpi({
       >
         {String(value)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -76,6 +84,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
+  },
+  kpiActive: {
+    transform: [{ scale: 0.99 }],
   },
   headerRow: {
     flexDirection: 'row',

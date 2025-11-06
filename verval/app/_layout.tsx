@@ -7,14 +7,12 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
-// 🔁 use o caminho relativo real do seu projeto
-import { useColorScheme } from "../components/useColorScheme";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext"; // << aqui
+import { ColorSchemeProvider, useColorScheme } from "@/components/useColorScheme";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 export { ErrorBoundary } from "expo-router";
 
 SplashScreen.preventAutoHideAsync();
-
 export const unstable_settings = { initialRouteName: "(tabs)" };
 
 export default function RootLayout() {
@@ -23,33 +21,32 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
+  useEffect(() => { if (error) throw error; }, [error]);
   if (!loaded) return null;
 
   return (
     <AuthProvider>
-      <RootLayoutNav fontsLoaded={loaded} />
+      <ColorSchemeProvider>
+        <RootLayoutNav fontsLoaded={loaded} />
+      </ColorSchemeProvider>
     </AuthProvider>
   );
 }
 
+
 function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
-  const colorScheme = useColorScheme();
+  const scheme = useColorScheme();
   const router = useRouter();
-  const segments = useSegments(); // p.ex. ["(auth)","login"] ou ["(tabs)"]
+  const segments = useSegments();
   const { usuario, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (fontsLoaded && !isLoading) SplashScreen.hideAsync();
-  }, [fontsLoaded, isLoading]);
+  useEffect(() => { console.log('[theme] scheme=', scheme); }, [scheme]);
+
+  useEffect(() => { if (fontsLoaded && !isLoading) SplashScreen.hideAsync(); }, [fontsLoaded, isLoading]);
 
   useEffect(() => {
     if (isLoading) return;
     const inAuthGroup = segments[0] === "(auth)";
-
     if (!usuario && !inAuthGroup) router.replace("/(auth)/login");
     else if (usuario && inAuthGroup) router.replace("/(tabs)");
   }, [usuario, isLoading, segments, router]);
@@ -57,7 +54,7 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
   if (isLoading) return null;
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />

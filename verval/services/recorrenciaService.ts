@@ -5,15 +5,20 @@ import { http } from "./lancamentoService";
 /** ===================== Tipos ===================== **/
 export type Recorrencia = {
   id: string;
-  usuarioId?: string;              // o backend retorna, mas deixamos opcional p/ compat
+  usuarioId?: string;                 // backend pode retornar
   cliente: string;
   valor: number;
   categoria?: string | null;
   ativo: boolean;
-  inicio: string;                  // "YYYY-MM-DD"
+  inicio: string;                     // "YYYY-MM-DD"
   fim?: string | null;
   observacao?: string | null;
-  pagamentos: Record<string, boolean>; // "YYYY-MM" -> pago?
+
+  /** NOVO: dia do vencimento dentro do mês (1..31). */
+  vencimento_dia?: number | null;
+
+  /** "YYYY-MM" -> pago? */
+  pagamentos: Record<string, boolean>;
 };
 
 export type RecorrenciaCreate = {
@@ -22,9 +27,12 @@ export type RecorrenciaCreate = {
   valor: number;
   categoria?: string | null;
   ativo?: boolean;
-  inicio: string;                  // "YYYY-MM-DD"
+  inicio: string;                     // "YYYY-MM-DD"
   fim?: string | null;
   observacao?: string | null;
+
+  /** NOVO: persistir o dia de vencimento ao criar */
+  vencimento_dia?: number | null;
 };
 
 export type RecorrenciaPatch = Partial<Omit<RecorrenciaCreate, "usuarioId">> & {
@@ -69,38 +77,69 @@ export const recorrenciaService = {
   /** GET /api/recorrencias/:id[?usuarioId=...] -> Recorrencia (com pagamentos) */
   async get(id: string, usuarioId?: string): Promise<Recorrencia | null> {
     const qp = usuarioId ? `?usuarioId=${encodeURIComponent(usuarioId)}` : "";
+    const url = `${API}/${encodeURIComponent(id)}${qp}`;
+
+    console.log("[recorrenciaService.get] FETCH", { url, id, usuarioId });
+
     try {
-      return await http<Recorrencia>(`${API}/${encodeURIComponent(id)}${qp}`);
+      const resp = await http<Recorrencia>(url);
+      console.log("[recorrenciaService.get] OK", { id: resp?.id });
+      return resp;
     } catch (e: any) {
-      if (String(e?.message || "").includes("404")) return null;
+      console.error("[recorrenciaService.get] ERROR", { url, id, usuarioId, error: e });
+      if (String(e?.message || "").includes("404")) {
+        console.warn("[recorrenciaService.get] 404 Not Found", { id, usuarioId });
+        return null;
+      }
       throw e;
     }
   },
 
-  /** POST /api/recorrencias  -> backend responde RecorrenciaBase (sem pagamentos).
-   *  Para manter o contrato do front, retornamos com pagamentos = {}.
+  /** POST /api/recorrencias
+   *  Backend pode responder sem 'pagamentos'; garantimos { pagamentos: {} } aqui.
    */
   async create(data: RecorrenciaCreate): Promise<Recorrencia> {
+    // opcionalmente sanitiza o vencimento_dia (1..31)
+    const payload = {
+      ...data,
+      vencimento_dia:
+        data.vencimento_dia == null
+          ? null
+          : Math.max(1, Math.min(Number(data.vencimento_dia) || 1, 31)),
+    };
+
     const created = await http<Omit<Recorrencia, "pagamentos">>(API, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     return { ...created, pagamentos: {} };
   },
 
-  /** PUT /api/recorrencias/:id  -> backend responde RecorrenciaBase.
-   *  Para entregar com 'pagamentos', buscamos o DTO completo em seguida.
+  /** PUT /api/recorrencias/:id
+   *  Após atualizar, buscamos o DTO completo para garantir 'pagamentos'.
    */
   async update(
     id: string,
     patch: RecorrenciaPatch & { usuarioId?: string }
   ): Promise<Recorrencia> {
     const qp = patch.usuarioId ? `?usuarioId=${encodeURIComponent(patch.usuarioId)}` : "";
+
+    // idem: sanitiza 'vencimento_dia' se vier no patch
+    const payload = {
+      ...patch,
+      ...(patch.vencimento_dia !== undefined && {
+        vencimento_dia:
+          patch.vencimento_dia == null
+            ? null
+            : Math.max(1, Math.min(Number(patch.vencimento_dia) || 1, 31)),
+      }),
+    };
+
     await http<Omit<Recorrencia, "pagamentos">>(`${API}/${encodeURIComponent(id)}${qp}`, {
       method: "PUT",
-      body: JSON.stringify(patch),
+      body: JSON.stringify(payload),
     });
-    // garante que o front receba o mapa atualizado do backend
+
     const full = await this.get(id, patch.usuarioId);
     if (!full) throw new Error("Recorrência não encontrada após update");
     return full;
@@ -112,7 +151,7 @@ export const recorrenciaService = {
     await http<void>(`${API}/${encodeURIComponent(id)}${qp}`, { method: "DELETE" });
   },
 
-  /** PUT /api/recorrencias/:id/pagamentos  -> RecorrenciaDTO */
+  /** PUT /api/recorrencias/:id/pagamentos  -> RecorrenciaDTO (com mapa atualizado) */
   async setPayments(
     id: string,
     pagamentos: Record<string, boolean>,
@@ -125,7 +164,9 @@ export const recorrenciaService = {
     });
   },
 
-  /** POST /api/recorrencias/:id/toggle  -> RecorrenciaDTO */
+  /** POST /api/recorrencias/:id/toggle  -> RecorrenciaDTO
+   *  Liga/desliga um mês "YYYY-MM" (padrão do seu backend).
+   */
   async toggleMonth(
     id: string,
     ymKey: string,                  // "YYYY-MM"

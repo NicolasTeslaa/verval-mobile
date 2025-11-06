@@ -1,0 +1,54 @@
+{
+  "title": "Settings",
+  "subtitle": "Appearance and system preferences",
+  "theme": {
+    "title": "Theme",
+    "hint": "Choose how the app should look.",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "profile": {
+    "title": "Profile",
+    "hint": "Update your basic information."
+  },
+  "fields": {
+    "name": "Name",
+    "phone": "Phone",
+    "bio": "Bio"
+  },
+  "placeholders": {
+    "name": "Your name",
+    "phone": "(xx) xxxxx-xxxx",
+    "bio": "e.g., Entrepreneur, B2B services focus"
+  },
+  "actions": {
+    "discard": "Discard",
+    "save": "Save",
+    "saving": "Saving..."
+  },
+  "alerts": {
+    "doneTitle": "Done",
+    "savedOk": "Settings saved successfully.",
+    "errorTitle": "Error",
+    "saveFailed": "Failed to save settings."
+  },
+  "errors": {
+    "sessionExpired": "Session expired."
+  },
+  "more": {
+    "title": "Other options",
+    "notifications": "Notifications (coming soon)",
+    "language": "Language (coming soon)",
+    "export": "Export data (coming soon)"
+  },
+  "common": {
+    "soon": "Coming soon"
+  },
+  "language": {
+    "title": "Language",
+    "hint": "Choose the interface language.",
+    "pt": "Portuguese",
+    "en": "English"
+  }
+}

@@ -1,43 +1,46 @@
+// app/(tabs)/_layout.tsx
 import "@/i18n";
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import React from 'react';
-import { Pressable } from 'react-native';
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Link, Tabs } from "expo-router";
+import React from "react";
+import { Pressable } from "react-native";
 
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
+import { useClientOnlyValue } from "@/components/useClientOnlyValue";
+import { useColorScheme } from "@/components/useColorScheme";
+import Colors from "@/constants/Colors";
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
+function TabBarIcon(props: { name: React.ComponentProps<typeof FontAwesome>["name"]; color: string; }) {
   return <FontAwesome size={20} style={{ marginBottom: -3 }} {...props} />;
 }
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const C = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: C.tint,
+        tabBarInactiveTintColor: C.tabIconDefault,
+        tabBarStyle: { backgroundColor: C.card, borderTopColor: C.border },
+        headerStyle: { backgroundColor: C.card },
+        headerTitleStyle: { color: C.textStrong },
         headerShown: useClientOnlyValue(false, true),
       }}
     >
       <Tabs.Screen
-        name="index" // app/(tabs)/index.tsx
+        name="index"
         options={{
-          title: 'Dashboard',
+          title: "Dashboard",
           tabBarIcon: ({ color }) => <TabBarIcon name="bar-chart" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
                 {({ pressed }) => (
                   <FontAwesome
-                    name="user"
+                    name="cog"
                     size={20}
-                    color={Colors[colorScheme ?? 'light'].text}
+                    color={C.textStrong}
                     style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
                   />
                 )}
@@ -46,19 +49,17 @@ export default function TabLayout() {
           ),
         }}
       />
-
       <Tabs.Screen
-        name="two" // app/(tabs)/two.tsx
+        name="two"
         options={{
-          title: 'Lançamentos',
+          title: "Lançamentos",
           tabBarIcon: ({ color }) => <TabBarIcon name="money" color={color} />,
         }}
       />
-
       <Tabs.Screen
-        name="recorrencia" // <-- use minúsculo aqui...
+        name="recorrencia"
         options={{
-          title: 'Recorrência',
+          title: "Recorrência",
           tabBarIcon: ({ color }) => <TabBarIcon name="credit-card" color={color} />,
         }}
       />

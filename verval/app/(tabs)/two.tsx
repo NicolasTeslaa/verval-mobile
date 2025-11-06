@@ -15,6 +15,7 @@ import {
   setAuthToken,
   setUsuarioAtual,
   type Lancamento,
+  type TipoLancamento,
 } from '@/services/lancamentoService';
 
 export default function LancamentosScreen() {
@@ -26,6 +27,7 @@ export default function LancamentosScreen() {
   const [items, setItems] = useState<Lancamento[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [current, setCurrent] = useState<Lancamento | null>(null);
+  const [filterTipo, setFilterTipo] = useState<TipoLancamento | null>(null); // <<< filtro ativo
 
   const { fmtMoney, fmtDate } = useLocale();
 
@@ -52,6 +54,7 @@ export default function LancamentosScreen() {
     try { await load(); } finally { setRefreshing(false); }
   }, [load]);
 
+  // totais (sempre do conjunto completo)
   const { totalEntradas, totalSaidas, saldo } = useMemo(() => {
     const entradas = items.filter(i => i.tipo === 'Entrada');
     const saidas = items.filter(i => i.tipo === 'Saida');
@@ -61,6 +64,12 @@ export default function LancamentosScreen() {
     const totalSaidas = sum(saidas.map(i => i.valor)) + custoEntradas;
     return { totalEntradas, totalSaidas, saldo: totalEntradas - totalSaidas };
   }, [items]);
+
+  // lista exibida (respeita o filtro)
+  const dataFiltered = useMemo(() => {
+    if (!filterTipo) return items;
+    return items.filter(i => i.tipo === filterTipo);
+  }, [items, filterTipo]);
 
   const openEdit = useCallback((l: Lancamento) => { setCurrent(l); setEditOpen(true); }, []);
   const confirmDelete = useCallback((l: Lancamento) => {
@@ -89,22 +98,50 @@ export default function LancamentosScreen() {
   const toneOut = toneByValue(totalSaidas, { invert: true });
   const toneBal = toneByValue(saldo);
 
+  // handlers de filtro
+  const toggleEntrada = () => setFilterTipo(prev => (prev === 'Entrada' ? null : 'Entrada'));
+  const toggleSaida   = () => setFilterTipo(prev => (prev === 'Saida'   ? null : 'Saida'));
+  const clearFilter   = () => setFilterTipo(null); // saldo limpa
+
   return (
     <SafeAreaView style={styles.safe}>
-
       {/* KPIs */}
       <View style={styles.kpis}>
-        <Kpi title={t('kpi.in')}      value={fmtMoney(totalEntradas)} icon="arrow-up"   tone={toneIn} />
-        <Kpi title={t('kpi.out')}     value={fmtMoney(totalSaidas)}   icon="arrow-down" tone={toneOut} />
-        <Kpi title={t('kpi.balance')} value={fmtMoney(saldo)}         icon="money"      tone={toneBal} />
+        <Kpi
+          title={t('kpi.in')}
+          value={fmtMoney(totalEntradas)}
+          icon="arrow-up"
+          tone={toneIn}
+          size="sm"
+          active={filterTipo === 'Entrada'}
+          onPress={toggleEntrada}
+        />
+        <Kpi
+          title={t('kpi.out')}
+          value={fmtMoney(totalSaidas)}
+          icon="arrow-down"
+          tone={toneOut}
+          size="sm"
+          active={filterTipo === 'Saida'}
+          onPress={toggleSaida}
+        />
+        <Kpi
+          title={t('kpi.balance')}
+          value={fmtMoney(saldo)}
+          icon="money"
+          tone={toneBal}
+          size="sm"
+          active={filterTipo === null}
+          onPress={clearFilter}
+        />
       </View>
 
       {/* Lista */}
       <FlatList
-        data={items}
+        data={dataFiltered}
         keyExtractor={(it) => it.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={[styles.listContent, items.length === 0 && { flex: 1, justifyContent: 'center' }]}
+        contentContainerStyle={[styles.listContent, dataFiltered.length === 0 && { flex: 1, justifyContent: 'center' }]}
         ListEmptyComponent={!loading ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>{t('empty')}</Text>
